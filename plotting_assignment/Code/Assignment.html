@@ -378,8 +378,8 @@ chunk like this:</p>
 </div>
 <div id="creating-the-folder" class="section level1">
 <h1>Creating the folder</h1>
-<p>if (!dir.exists(data_folder)) { dir.create(data_folder, recursive =
-TRUE) }</p>
+<p>if (!dir.exists(data_folder)) { ##checking if the folder already
+exist, if not then dir.create(data_folder, recursive = TRUE) }</p>
 </div>
 <div id="asking-r-to-simulate-a-speed-dating-dataset" class="section level1">
 <h1>Asking R to simulate a speed dating dataset</h1>
@@ -395,8 +395,11 @@ attractiveness_rating = runif(n, 1, 10), # Random scores from 1 to 10,
 simulating attractiveness interests_match = sample(0:1, n, replace =
 TRUE, prob = c(0.6, 0.4)), # 0 = No match, 1 = Match of
 interests,60%chances of no match, 40% of match conversation_length =
-rnorm(n, mean = 5, sd = 2) # Normally distributed conversation length
-)</p>
+rnorm(n, mean = 5, sd = 2), # Normally distributed conversation length
+attraction_feeling = sample(0:1, n, replace = TRUE, prob = c(0.5, 0.5)),
+# Randomly assign whether they felt attracted (50% chance) partner_id =
+sample(1:n, n, replace = TRUE) # Randomly assign a partner_id (random
+partner for each participant) )</p>
 </div>
 <div id="save-the-data-as-a-csv-file-inside-the-data-folder" class="section level1">
 <h1>Save the data as a CSV file inside the “data” folder</h1>
