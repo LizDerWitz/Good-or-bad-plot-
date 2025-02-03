@@ -92,14 +92,17 @@ liked_data <- speed_dating_data %>%
 to View result:
 head(liked_data)
 
-```{r filtering the data}
+```{r filtering the data 2.0}
+
 library(dplyr)
+
 liked_data <- speed_dating_data %>%
    filter(attraction_feeling == 1) %>%  
   select(participant_id, age, gender, partner_id) %>%
   left_join(speed_dating_data, by = c("partner_id" = "participant_id")) %>%
   select(participant_id, age.x, gender.x, partner_id, age.y, gender.y) %>%
   rename(liker_id = participant_id, liker_age = age.x, liker_gender = gender.x, liked_id = partner_id, liked_age = age.y, liked_gender = gender.y)
+
 ```
 
 # # Creating the good plot 
@@ -139,7 +142,31 @@ grid.arrange(female_plot, male_plot, ncol = 2)
 library(ggplot2)
 
 
+# Example of creating raincloud plot
+ggplot(liked_data, aes(x = liker_age, y = liked_age, fill = liker_gender )) +
+  # Violin plot for distribution
+  geom_violin(scale = "area", alpha = 0.5, trim = TRUE) +
+  # Boxplot for central tendency
+  geom_boxplot(width = 0.2, fill = "white", color = "black", outlier.shape = NA) +
+  # Dot plot for individual data points
+  geom_dotplot(binaxis = "y", stackdir = "center", dotsize = 1, fill = "black") +
+  # Customization
+  theme_minimal() +
+  labs(
+    title = "Age Distribution of Liker and Liked",
+    x = "Liker ID",
+    y = "Age"
+  ) +
+  theme(
+    plot.title = element_text(size = 16),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12)
+  )
 
+
+```
+
+library(ggplot2)
 library(dplyr)
 library(gridExtra)
 
@@ -151,8 +178,8 @@ female_plot <- liked_data %>%
   geom_smooth(method = "lm", se = FALSE, color = "black") +  
   labs(title = "Attraction to Males by Female Likers", 
        x = "Age of Female Likers", 
-       y = "Age of Attracted Males") +
-  theme_minimal() +  
+       y = "Age of liked Males") +
+  theme_wsj +  
   theme(legend.position = "none")
 
 # Plot for males 
@@ -163,9 +190,12 @@ male_plot <- liked_data %>%
   geom_smooth(method = "lm", se = FALSE, color = "black") + 
   labs(title = "Attraction to Females by Male Likers", 
        x = "Age of Male Likers", 
-       y = "Age of Attracted Females") +
-  theme_minimal() +  
+       y = "Age of liked Females") +
+  theme_wsjl +  
   theme(legend.position = "none")
 
 # Arrange the plots side by side
 grid.arrange(female_plot, male_plot, ncol = 2)
+
+```
+
