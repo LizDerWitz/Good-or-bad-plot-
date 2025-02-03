@@ -8,49 +8,53 @@ date: "2025-02-01"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Creating the data
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-##Creating the data
-
-#Defining the folder path
+Defining the folder path:
 data_folder <- "plotting_assignment/data"
 
-# Creating the folder
-if (!dir.exists(data_folder)) {         ##checking if the folder already exist, if not then
+Creating the folder:
+Checking if the folder already exist, if not then:
+if (!dir.exists(data_folder)) {        
   dir.create(data_folder, recursive = TRUE)
 }
 
-# Asking R to simulate a speed dating dataset
-set.seed(123)  # For reproducibility
-n <- 100  # Number of participants
+Asking R to simulate a speed dating dataset:
+For reproducibility:
+set.seed(123)  
+Number of participants:
+n <- 100  
+
 
 speed_dating_data <- data.frame(   
-   #id from 1 to n (100)
+# id from 1 to n (100)
   participant_id = 1:n,    
-   #age between 18 and 40, the same age can be chosen more than once
- # age = sample(18:40, n, replace = TRUE),    
-   #I am considering only straight people, sorry gays </3
-  # gender = sample(c("Male", "Female"), n, replace = TRUE),
-  # Random scores from 1 to 10, simulating attractiveness
- # attractiveness_rating = runif(n, 1, 10),  
-   # 0 = No match, 1 = Match of interests,60%chances of no match, 40% of match
-  # interests_match = sample(0:1, n, replace = TRUE, prob = c(0.6, 0.4)), 
-  # Normally distributed conversation length
-  # conversation_length = rnorm(n, mean = 5, sd = 2), 
-   # Randomly assign whether they felt attracted (50% chance)
- # attraction_feeling = sample(0:1, n, replace = TRUE, prob = c(0.5, 0.5)), 
-  # Randomly assign a partner_id (random partner for each participant)
- # partner_id = sample(1:n, n, replace = TRUE)  
-)
+#age between 18 and 40, the same age can be chosen more than once
+ age = sample(18:40, n, replace = TRUE),    
+#I am considering only cis people
+  gender = sample(c("Male", "Female"), n, replace = TRUE),
+# Random scores from 1 to 10, simulating attractiveness
+ attractiveness_rating = runif(n, 1, 10),  
+# 0 = No match, 1 = Match of interests,60% chances of no match, 40% of match
+  interests_match = sample(0:1, n, replace = TRUE, prob = c(0.6, 0.4)), 
+# Normally distributed conversation length
+  conversation_length = rnorm(n, mean = 5, sd = 2), 
+# Randomly assign whether they felt attracted (50% chance)
+ attraction_feeling = sample(0:1, n, replace = TRUE, prob = c(0.5, 0.5)), 
+# Randomly assign a partner_id (random partner for each participant)
+partner_id = sample(1:n, n, replace = TRUE))
 
+#Save the data as a CSV file inside the "data" folder
+write.csv(speed_dating_data, file = file.path(data_folder, "speed_dating_data.csv"), row.names = FALSE)
+
+#Message to confirm
+cat("Speed dating dataset created and saved in 'plotting_assignment/data/speed_dating_data.csv'\n")
+
+```{r creating the data}
+data_folder <- "plotting_assignment/data"
+if (!dir.exists(data_folder)) {dir.create(data_folder, recursive = TRUE)}
+set.seed(123) 
+n <- 100  
 speed_dating_data <- data.frame(   
   participant_id = 1:n,    
  age = sample(18:40, n, replace = TRUE),    
@@ -61,22 +65,107 @@ conversation_length = rnorm(n, mean = 5, sd = 2),
 attraction_feeling = sample(0:1, n, replace = TRUE, prob = c(0.5, 0.5)), 
 partner_id = sample(1:n, n, replace = TRUE))
 
-# Save the data as a CSV file inside the "data" folder
 write.csv(speed_dating_data, file = file.path(data_folder, "speed_dating_data.csv"), row.names = FALSE)
 
-# Message to confirm
 cat("Speed dating dataset created and saved in 'plotting_assignment/data/speed_dating_data.csv'\n")
 
-```
-hdhd
-```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Filtering the data
+
+installing package:
+library(dplyr)
+
+#renaming
+liked_data <- speed_dating_data %>%
+#keeping only the ones who felt an attraction
+  filter(attraction_feeling == 1) %>%  
+#keeping only the liker's participant id
+  select(participant_id, age, partner_id) %>% 
+#joining by attracted id
+  left_join(speed_dating_data, by = c("partner_id" = "participant_id")) %>%
+# differentiating their age 
+  select(participant_id, age.x, partner_id, age.y) %>%
+  rename(liker_id = participant_id, liker_age = age.x, liked_id = partner_id, liked_age = age.y)
+
+to View result:
+head(liked_data)
+
+```{r filtering the data}
+library(dplyr)
+liked_data <- speed_dating_data %>%
+   filter(attraction_feeling == 1) %>%  
+  select(participant_id, age, gender, partner_id) %>%
+  left_join(speed_dating_data, by = c("partner_id" = "participant_id")) %>%
+  select(participant_id, age.x, gender.x, partner_id, age.y, gender.y) %>%
+  rename(liker_id = participant_id, liker_age = age.x, liker_gender = gender.x, liked_id = partner_id, liked_age = age.y, liked_gender = gender.y)
+```
+
+# # Creating the good plot 
+library(ggplot2)
+library(dplyr)
+library(gridExtra)  # Required for arranging plots side by side
+
+# Plot for females (likers who are female)
+female_plot <- liked_data %>%
+  filter(liker_gender == "Female") %>%
+  ggplot(aes(x = liker_age, y = liked_age, color = liked_gender)) +  # Relating liker's age and liked's age
+  geom_point(alpha = 0.7) +  # Scatter plot
+  geom_smooth(method = "lm", se = FALSE, color = "black") +  # Add a regression line
+  labs(title = "Attraction to Males by Female Likers", 
+       x = "Age of Female Likers", 
+       y = "Age of Attracted Males") +
+  theme_minimal() +  # Minimal theme for a clean look
+  theme(legend.position = "none")
+
+# Plot for males (likers who are male)
+male_plot <- liked_data %>%
+  filter(liker_gender == "Male") %>%
+  ggplot(aes(x = liker_age, y = liked_age, color = liked_gender)) +  # Relating liker's age and liked's age
+  geom_point(alpha = 0.7) +  # Scatter plot
+  geom_smooth(method = "lm", se = FALSE, color = "black") +  # Add a regression line
+  labs(title = "Attraction to Females by Male Likers", 
+       x = "Age of Male Likers", 
+       y = "Age of Attracted Females") +
+  theme_minimal() +  # Minimal theme for a clean look
+  theme(legend.position = "none")
+
+# Arrange the plots side by side
+grid.arrange(female_plot, male_plot, ncol = 2)
+
+```{r filtering the data}
+
+library(ggplot2)
+
+
+
+library(dplyr)
+library(gridExtra)
+
+# Plot for females 
+female_plot <- liked_data %>%
+  filter(liker_gender == "Female") %>%
+  ggplot(aes(x = liker_age, y = liked_age, color = liked_gender)) +  
+  geom_point(alpha = 0.7) +  # Scatter plot
+  geom_smooth(method = "lm", se = FALSE, color = "black") +  
+  labs(title = "Attraction to Males by Female Likers", 
+       x = "Age of Female Likers", 
+       y = "Age of Attracted Males") +
+  theme_minimal() +  
+  theme(legend.position = "none")
+
+# Plot for males 
+male_plot <- liked_data %>%
+  filter(liker_gender == "Male") %>%
+  ggplot(aes(x = liker_age, y = liked_age, color = liked_gender)) + 
+  geom_point(alpha = 0.7) +  # Scatter plot
+  geom_smooth(method = "lm", se = FALSE, color = "black") + 
+  labs(title = "Attraction to Females by Male Likers", 
+       x = "Age of Male Likers", 
+       y = "Age of Attracted Females") +
+  theme_minimal() +  
+  theme(legend.position = "none")
+
+# Arrange the plots side by side
+grid.arrange(female_plot, male_plot, ncol = 2)
