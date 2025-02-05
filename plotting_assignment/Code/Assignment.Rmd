@@ -25,7 +25,7 @@ Number of participants:
 
 
 speed_dating_data <- data.frame(   
-With id from 1 to n (100):
+With id from 1 to n (1000):
 #  participant_id = 1:n,    
 With age between 18 and 40, the same age can be chosen more than once:
 # age = sample(18:40, n, replace = TRUE),    
@@ -50,7 +50,7 @@ Message to confirm:
 data_folder <- "plotting_assignment/data"
 if (!dir.exists(data_folder)) {dir.create(data_folder, recursive = TRUE)}
 set.seed(123) 
-n <- 100  
+n <- 1000  
 speed_dating_data <- data.frame(   
 participant_id = 1:n,    
 age = sample(18:40, n, replace = TRUE),    
@@ -99,8 +99,163 @@ liked_data <- speed_dating_data %>%
   select(participant_id, age.x, gender.x, partner_id, age.y, gender.y) %>%
   rename(liker_id = participant_id, liker_age = age.x, liker_gender = gender.x, liked_id = partner_id, liked_age = age.y, liked_gender = gender.y)
 
+
 ```
 #Creating the good plot
+install.packages("ggplot2")
+install.packages("dplyr")
+
+
+
+
+
+```{r heat model}
+
+# Check structure of data
+str(liked_data)
+
+# Convert gender to a factor (if not already)
+liked_data$liker_gender <- as.factor(liked_data$liker_gender)
+
+# Subset data by gender
+male_data <- subset(liked_data, liker_gender == "Male")
+female_data <- subset(liked_data, liker_gender == "Female")
+
+library(MASS)  # For kde2d
+
+# Male model
+male_density <- kde2d(male_data$liker_age, male_data$liked_age, n = 100)
+
+# Female model
+female_density <- kde2d(female_data$liker_age, female_data$liked_age, n = 100)
+
+
+library(ggplot2)
+library(dplyr)
+
+# Bin data into a grid for better distinction
+bin_size <- 2  # Adjust for more or less granularity
+
+liked_data_binned <- liked_data %>%
+  mutate(
+    liker_age_bin = cut(liker_age, breaks = seq(min(liker_age), max(liker_age), by = bin_size), include.lowest = TRUE),
+    liked_age_bin = cut(liked_age, breaks = seq(min(liked_age), max(liked_age), by = bin_size), include.lowest = TRUE)
+  ) %>%
+  group_by(liker_gender, liker_age_bin, liked_age_bin) %>%
+  summarise(density = n(), .groups = "drop")
+
+# Convert factors to numeric midpoints for plotting
+liked_data_binned$liker_age_bin <- as.numeric(gsub("\\((.*),(.*)]", "\\1", liked_data_binned$liker_age_bin)) + bin_size / 2
+liked_data_binned$liked_age_bin <- as.numeric(gsub("\\((.*),(.*)]", "\\1", liked_data_binned$liked_age_bin)) + bin_size / 2
+
+# Plot heatmap with facet_grid() for side-by-side comparison
+ggplot(liked_data_binned, aes(x = liker_age_bin, y = liked_age_bin, fill = density)) +
+  geom_tile(color = "white") +  # White grid for better separation
+  scale_fill_gradient(low = "blue", high = "red") +
+  facet_grid(. ~ liker_gender) +  # Side-by-side layout
+  labs(title = "Heatmap of Liker Age vs. Liked Age", x = "Liker Age", y = "Liked Age", fill = "Count") +
+  theme_minimal()
+
+# Heat map with both genders, is really not nice to see
+
+
+# Conert density data to a format usable by ggplot2
+male_df <- data.frame(expand.grid(x = male_density$x, y = male_density$y), density = as.vector(male_density$z))
+female_df <- data.frame(expand.grid(x = female_density$x, y = female_density$y), density = as.vector(female_density$z))
+
+# Plot Male Heatmap
+ggplot(male_df, aes(x, y, fill = density)) +
+  geom_tile() +
+  scale_fill_gradient(low = "blue", high = "red") +
+  labs(title = "Heatmap for Males", x = "Liker Age", y = "Liked Age")
+
+# Plot Female Heatmap
+ggplot(female_df, aes(x, y, fill = density)) +
+  geom_tile() +
+  scale_fill_gradient(low = "blue", high = "red") +
+  labs(title = "Heatmap for Females", x = "Liker Age", y = "Liked Age")
+# heat map with genders separated, visually very appealing but it is not a good PlantGrowth
+
+```
+```{r new heat map}
+# Set a CRAN mirror (e.g., RStudio's CRAN mirror)
+options(repos = c(CRAN = "https://cloud.r-project.org/"))
+
+# Install viridis package if not already installed
+install.packages("viridis")
+
+# Load necessary libraries
+library(ggplot2)
+library(viridis)
+
+ggplot(liked_data, aes(x = liker_age, y = liked_age)) +
+  stat_bin2d(bins = 30) +  # Create a 2D histogram (heatmap)
+  scale_fill_viridis(option = "D", direction = 1,  # Use "D" variant of viridis (you can try "A", "B", or "C" for other options)
+                     limits = c(0, 6)) +  # Set color limits to 0-6
+  facet_wrap(~ liker_gender) +  # Separate by gender
+  labs(
+    title = "Heatmap of Liker Age vs. Liked Age", 
+    x = "Liker Age", 
+    y = "Liked Age", 
+    fill = "Count"
+  ) +
+  theme_minimal()
+
+```
+```{r ridgeline plot}
+install.packages("ggridges")
+
+library(ggridges)
+
+ggplot(liked_data, aes(x = liked_age, y = as.factor(liker_age), fill = liker_gender)) +
+  geom_density_ridges(alpha = 0.7) +
+  facet_wrap(~ liker_gender) +  
+  labs(title = "Distribution of Liked Age by Liker Age",
+       x = "Liked Age",
+       y = "Liker Age") +
+  theme_minimal()
+
+
+```
+```{r ridgeline plot second attempt}
+library(ggridges)
+library(ggplot2)
+
+# Round liker_age to 1 decimal place for finer age divisions
+liked_data$liker_age_decimal <- round(liked_data$liker_age, 1)
+
+# Filter liked_data to only include liked ages 18 or above
+filtered_data <- liked_data[liked_data$liked_age >= 18, ]
+
+# Create the ridgeline plot with decimal liker's age and filtered liked_age starting at 18
+ggplot(filtered_data, aes(x = liked_age, y = as.factor(liker_age_decimal), fill = liker_gender)) +
+  geom_density_ridges(alpha = 0.7) +  # Ridgeline plot
+  facet_wrap(~ liker_gender) +  # Separate plots for male & female
+  labs(
+    title = "Distribution of Liked Age by Liker Age",
+    x = "Liked Age",
+    y = "Liker Age (Decimal)",
+    fill = "Gender"
+  ) +
+  theme_minimal() +
+  scale_x_continuous(limits = c(18, NA)) +  # Set x-axis to start from 18
+  scale_y_discrete(breaks = c(18, 23, 28, 32, 37, 42))  # Set specific y-axis breaks
+
+
+
+```
+
+```{r scatterplot}
+ggplot(liked_data, aes(x = liker_age, y = liked_age, color = liker_gender)) +
+  geom_jitter(alpha = 0.3) +  # Scatterplot with slight jitter for visibility
+  geom_smooth(method = "lm", se = FALSE) +  # Trend line
+  labs(title = "Scatterplot of Age Preferences",
+       x = "Liker Age",
+       y = "Liked Age",
+       color = "Gender") +
+  theme_minimal()
+
+```
 
 install.packages("ggrain")
 
