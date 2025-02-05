@@ -9,44 +9,47 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Creating the data
+Firstly, I am asking R to simulate a speed dating dataset. I am defining the folder path & then creating the folder, while checking before if it doesn't already exist.
 
-Defining the folder path:
-# data_folder <- "plotting_assignment/data"
+data_folder <- "plotting_assignment/data"
+if (!dir.exists(data_folder)) {dir.create(data_folder, recursive = TRUE)}
 
-Creating the folder:
-Checking if the folder already exist, if not then:
-#if (!dir.exists(data_folder)) {dir.create(data_folder, recursive = TRUE)}
-
-Asking R to simulate a speed dating dataset:
 For reproducibility:
-# set.seed(123)  
-Number of participants:
-# n <- 1000  
+set.seed(123)  
 
+Number of participants:
+n <- 1000  
 
 speed_dating_data <- data.frame(   
+
 With id from 1 to n (1000):
-#  participant_id = 1:n,    
+participant_id = 1:n,    
+
 With age between 18 and 40, the same age can be chosen more than once:
-# age = sample(18:40, n, replace = TRUE),    
+age = sample(18:40, n, replace = TRUE),    
+
 I am considering only cis people:
-# gender = sample(c("Male", "Female"), n, replace = TRUE),
-Random scores from 1 to 10, simulating attractiveness
-# attractiveness_rating = runif(n, 1, 10),  
-1 -> attracted to the partner, 0 -> not attracted
-#attraction_feeling = sample(0:1, n, replace = TRUE, prob = c(0.5, 0.5)),
-0 = No match, 1 = Match of interests,60% chances of no match, 40% of match:
-# interests_match = sample(0:1, n, replace = TRUE, prob = c(0.6, 0.4)), 
+gender = sample(c("Male", "Female"), n, replace = TRUE),
+
+Random scores from 1 to 10, simulating attractiveness:
+attractiveness_rating = runif(n, 1, 10),  
+
+0 = No match, 1 = Match of interests, 60% chances of no match, 40% of match:
+interests_match = sample(0:1, n, replace = TRUE, prob = c(0.6, 0.4)), 
+
 Randomly assign a partner_id (random partner for each participant):
+
 partner_id = sample(1:n, n, replace = TRUE))
 
 Save the data as a CSV file inside the "data" folder:
-# write.csv(speed_dating_data, file = file.path(data_folder, "speed_dating_data.csv"), row.names = FALSE)
+
+write.csv(speed_dating_data, file = file.path(data_folder, "speed_dating_data.csv"), row.names = FALSE)
 
 Message to confirm:
-# cat("Speed dating dataset created and saved in 'plotting_assignment/data/speed_dating_data.csv'\n")
 
-```{r creating the data}
+cat("Speed dating dataset created and saved in 'plotting_assignment/data/speed_dating_data.csv'\n")
+
+```{r Creating the data}
 data_folder <- "plotting_assignment/data"
 
 if (!dir.exists(data_folder)) {dir.create(data_folder, recursive = TRUE)}
@@ -59,36 +62,10 @@ speed_dating_data <- data.frame(
 participant_id = 1:n,    
 age = sample(18:40, n, replace = TRUE),    
 gender = sample(c("Male", "Female"), n, replace = TRUE),
-attractiveness_rating = runif(n, 1, 10),  
-attraction_feeling = sample(0:1, n, replace = TRUE, prob = c(0.5, 0.5)),
+attractiveness_rating = runif(n, 1, 10),
+attraction_feeling = sample(0:1,n, replace = TRUE, prob = c(0.5,0.5)),
 interests_match = sample(0:1, n, replace = TRUE, prob = c(0.6, 0.4)),
 partner_id = sample(1:n, n, replace = TRUE))
-
-# Initialize the liked_age column
-speed_dating_data$liked_age <- NA
-
-# Logical indices for genders
-male_idx <- speed_dating_data$gender == "Male"
-female_idx <- speed_dating_data$gender == "Female"
-
-# For males: choose a liked age lower than their own age
-speed_dating_data$liked_age[male_idx] <- sapply(speed_dating_data$age[male_idx], function(x) {
-  if (x > 18) {
-    sample(18:(x - 1), 1)
-  } else {
-    18  # if age is 18, default to 18
-  }
-})
-
-# For females: choose a liked age higher than their own age
-speed_dating_data$liked_age[female_idx] <- sapply(speed_dating_data$age[female_idx], function(x) {
-  if (x < 40) {
-    sample((x + 1):40, 1)
-  } else {
-    40  # if age is 40, default to 40
-  }
-})
-
 
 write.csv(speed_dating_data, file = file.path(data_folder, "speed_dating_data.csv"), row.names = FALSE)
 
@@ -102,22 +79,26 @@ cat("Speed dating dataset created and saved in 'plotting_assignment/data/speed_d
 installing package:
 library(dplyr)
 
-#renaming
+Renaming:
 liked_data <- speed_dating_data %>%
-#keeping only the ones who felt an attraction
+
+Keeping only the ones who felt an attraction:
   filter(interests_match == 1) %>%  
-#keeping only the liker's participant id
+  
+Keeping only the subject's participant id, age & the partner's id:
   select(participant_id, age, partner_id) %>% 
-#joining by attracted id
+  
+Joining by attracted id:
   left_join(speed_dating_data, by = c("partner_id" = "participant_id")) %>%
-# differentiating their age 
-  select(participant_id, age.x, partner_id, age.y) %>%
-  rename(liker_id = participant_id, liker_age = age.x, liked_id = partner_id, liked_age = age.y)
+  
+Differentiating their age 
+select(participant_id, age.x, partner_id, age.y) %>%
+rename(liker_id = participant_id, liker_age = age.x, liked_id = partner_id, liked_age = age.y)
 
 to View result:
 head(liked_data)
 
-```{r filtering the data 2.0}
+```{r filtering the data}
 
 
 library(dplyr)
@@ -127,38 +108,46 @@ liked_data <- speed_dating_data %>%
   select(participant_id, age, gender, partner_id) %>%
   left_join(speed_dating_data, by = c("partner_id" = "participant_id")) %>%
   select(participant_id, age.x, gender.x, partner_id, age.y, gender.y) %>%
-  rename(liker_id = participant_id, liker_age = age.x, liker_gender = gender.x, liked_id = partner_id, liked_age = age.y, liked_gender = gender.y)
+  rename(subject = participant_id, subject_age = age.x, subject_gender = gender.x, partner = partner_id, partner_age = age.y, partner_gender = gender.y)
 
 
 ```
 #Creating the good plot
+
+Checking the structure of the data:
+str(liked_data)
+
+Converting gender into a factor:
+liked_data$subject_gender <- as.factor(liked_data$subject_gender)
+
+Dubsetting the data by gender:
+male_data <- subset(liked_data, subject_gender == "Male")
+female_data <- subset(liked_data, subject_gender == "Female")
+
+# - 
 install.packages("ggplot2")
 install.packages("dplyr")
 
-
-
-
-
-```{r heat model}
-
-# Check structure of data
-str(liked_data)
-
-# Convert gender to a factor (if not already)
-liked_data$liker_gender <- as.factor(liked_data$liker_gender)
-
-# Subset data by gender
-male_data <- subset(liked_data, liker_gender == "Male")
-female_data <- subset(liked_data, liker_gender == "Female")
-
-
-library(MASS)  # For kde2d
+library(MASS)  
 
 # Male model
 male_density <- kde2d(male_data$liker_age, male_data$liked_age, n = 100)
 
 # Female model
 female_density <- kde2d(female_data$liker_age, female_data$liked_age, n = 100)
+
+# - 
+
+```{r heat model}
+
+liked_data$subject_gender <- as.factor(liked_data$subject_gender)
+
+male_data <- subset(liked_data, subject_gender == "Male")
+female_data <- subset(liked_data, subject_gender == "Female")
+
+
+
+
 
 
 library(ggplot2)
