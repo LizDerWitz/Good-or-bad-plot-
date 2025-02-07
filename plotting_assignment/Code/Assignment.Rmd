@@ -76,14 +76,14 @@ cat("Speed dating dataset created and saved in 'plotting_assignment/data/speed_d
 
 # Filtering the data
 
-installing package:
+installing dplyr:
 library(dplyr)
 
 Renaming:
 liked_data <- speed_dating_data %>%
 
 Keeping only the ones who felt an attraction:
-  filter(interests_match == 1) %>%  
+  filter(attraction_feeling == 1) %>%  
   
 Keeping only the subject's participant id, age & the partner's id:
   select(participant_id, age, partner_id) %>% 
@@ -91,206 +91,121 @@ Keeping only the subject's participant id, age & the partner's id:
 Joining by attracted id:
   left_join(speed_dating_data, by = c("partner_id" = "participant_id")) %>%
   
-Differentiating their age 
-select(participant_id, age.x, partner_id, age.y) %>%
-rename(liker_id = participant_id, liker_age = age.x, liked_id = partner_id, liked_age = age.y)
+Selecting age & gender of participant & partner:
+select(participant_id, age.x, gender.x, partner_id, age.y, gender.y) %>%
 
-to View result:
+Renaming to distinguish more easily:
+rename(subject = participant_id, subject_age = age.x, subject_gender = gender.x, partner = partner_id, partner_age = age.y, partner_gender = gender.y)
+
+To view the results:
 head(liked_data)
 
 ```{r filtering the data}
-
-
 library(dplyr)
 
 liked_data <- speed_dating_data %>%
-   filter(attraction_feeling == 1) %>%  
-  select(participant_id, age, gender, partner_id) %>%
-  left_join(speed_dating_data, by = c("partner_id" = "participant_id")) %>%
-  select(participant_id, age.x, gender.x, partner_id, age.y, gender.y) %>%
-  rename(subject = participant_id, subject_age = age.x, subject_gender = gender.x, partner = partner_id, partner_age = age.y, partner_gender = gender.y)
-
+filter(attraction_feeling == 1) %>%  
+select(participant_id, age, gender, partner_id) %>%
+left_join(speed_dating_data, by = c("partner_id" = "participant_id")) %>%
+select(participant_id, age.x, gender.x, partner_id, age.y, gender.y) %>%
+rename(subject = participant_id, subject_age = age.x, subject_gender = gender.x, partner = partner_id, partner_age = age.y, partner_gender = gender.y)
 
 ```
 #Creating the good plot
 
-Checking the structure of the data:
-str(liked_data)
-
-Converting gender into a factor:
-liked_data$subject_gender <- as.factor(liked_data$subject_gender)
-
-Dubsetting the data by gender:
-male_data <- subset(liked_data, subject_gender == "Male")
-female_data <- subset(liked_data, subject_gender == "Female")
-
-# - 
-install.packages("ggplot2")
-install.packages("dplyr")
-
-library(MASS)  
-
-# Male model
-male_density <- kde2d(male_data$liker_age, male_data$liked_age, n = 100)
-
-# Female model
-female_density <- kde2d(female_data$liker_age, female_data$liked_age, n = 100)
-
-# - 
-
-```{r heat model}
-
-liked_data$subject_gender <- as.factor(liked_data$subject_gender)
-
-male_data <- subset(liked_data, subject_gender == "Male")
-female_data <- subset(liked_data, subject_gender == "Female")
-
-
-
-
-
-
+For visualisation:
 library(ggplot2)
-library(dplyr)
+To create ridge density plots:
+library(ggridges)
 
-# Bin data into a grid for better distinction
-bin_size <- 2  # Adjust for more or less granularity
+Converting gender into a factor, to make it categorical:
+liked_data$subject_gender <- as.factor(liked_data$subject_gender)
 
-liked_data_binned <- liked_data %>%
-  mutate(
-    liker_age_bin = cut(liker_age, breaks = seq(min(liker_age), max(liker_age), by = bin_size), include.lowest = TRUE),
-    liked_age_bin = cut(liked_age, breaks = seq(min(liked_age), max(liked_age), by = bin_size), include.lowest = TRUE)
-  ) %>%
-  group_by(liker_gender, liker_age_bin, liked_age_bin) %>%
-  summarise(density = n(), .groups = "drop")
+Subgroupig into 3:
+liked_data$subject_age_group <- with(liked_data, paste0(floor((subject_age - 18) / 3) * 3 + 18, "-", floor((subject_age - 18) / 3) * 3 + 20))
 
-# Convert factors to numeric midpoints for plotting
-liked_data_binned$liker_age_bin <- as.numeric(gsub("\\((.*),(.*)]", "\\1", liked_data_binned$liker_age_bin)) + bin_size / 2
-liked_data_binned$liked_age_bin <- as.numeric(gsub("\\((.*),(.*)]", "\\1", liked_data_binned$liked_age_bin)) + bin_size / 2
+mean_data <- liked_data %>%
+  group_by(subject_age_group, subject_gender) %>%
+  
+Calculating the mean partner_age for each group:
+  summarise(mean_partner_age = mean(partner_age, na.rm = TRUE)) %>%
+  
+  ungrouping for eventual further processing:
+  ungroup()
 
-# Heat map with both genders, is really not nice to see
+Creating the plot:
+ggplot(liked_data, aes(x = partner_age, y = subject_age_group, fill = subject_gender)) +
 
-
-# Conert density data to a format usable by ggplot2
-male_df <- data.frame(expand.grid(x = male_density$x, y = male_density$y), density = as.vector(male_density$z))
-female_df <- data.frame(expand.grid(x = female_density$x, y = female_density$y), density = as.vector(female_density$z))
-
-# Plot Male Heatmap
-ggplot(male_df, aes(x, y, fill = density)) +
-  geom_tile() +
-  scale_fill_gradient(low = "blue", high = "red") +
-  labs(title = "Heatmap for Males", x = "Liker Age", y = "Liked Age")
-
-# Plot Female Heatmap
-ggplot(female_df, aes(x, y, fill = density)) +
-  geom_tile() +
-  scale_fill_gradient(low = "blue", high = "red") +
-  labs(title = "Heatmap for Females", x = "Liker Age", y = "Liked Age")
-# heat map with genders separated, visually very appealing but it is not a good PlantGrowth
-
-
-# Combine the male and female data into one dataframe, adding a gender column
-male_df$gender <- "Male"
-female_df$gender <- "Female"
-
-# Combine both dataframes
-combined_df <- rbind(male_df, female_df)
-
-# Create the combined heatmap with faceting
-ggplot(combined_df, aes(x = y, y = x, fill = density)) +
-  geom_tile() +
-  scale_fill_gradient(low = "blue", high = "red") +
-  facet_wrap(~ gender) +  # This separates the heatmaps by gender
-  labs(title = "Heatmaps for Males and Females", x = "Liked Age", y = "Liker Age", fill = "Density") +
+To control transparency:
+  geom_density_ridges(alpha = 0.7) +
+  
+Adding a "mean point":
+  geom_point(data = mean_data, aes(x = mean_partner_age, y = subject_age_group),
+             shape = 21, size = 3, fill = "black", color = "white") +
+             
+ Creating two separate plots for two genders:         
+  facet_wrap(~ subject_gender) +
+  labs(title = "Age Preferences in Dating: Differences across Age groups and Gender",
+    x = "Liked Age",
+    y = "Subjects",
+    Fill = "Gender") +
   theme_minimal()
 
+```{r Good plot}
+liked_data$subject_gender <- as.factor(liked_data$subject_gender)
 
-```
-```{r ridgesomething plot}
 library(dplyr)
 library(ggplot2)
 library(ggridges)
 
-liked_data$liker_age_group <- with(liked_data, paste0(floor((liker_age - 18) / 3) * 3 + 18, "-", floor((liker_age - 18) / 3) * 3 + 20))
+liked_data$subject_age_group <- with(liked_data, paste0(floor((subject_age - 18) / 3) * 3 + 18, "-", floor((subject_age - 18) / 3) * 3 + 20))
 
 
 mean_data <- liked_data %>%
-  group_by(liker_age_group, liker_gender) %>%
-  summarise(mean_liked_age = mean(liked_age, na.rm = TRUE)) %>%
+  group_by(subject_age_group, subject_gender) %>%
+  summarise(mean_partner_age = mean(partner_age, na.rm = TRUE)) %>%
   ungroup()
 
 
-ggplot(liked_data, aes(x = liked_age, y = liker_age_group, fill = liker_gender)) +
+ggplot(liked_data, aes(x = partner_age, y = subject_age_group, fill = subject_gender)) +
   geom_density_ridges(alpha = 0.7) +
-  geom_point(data = mean_data, aes(x = mean_liked_age, y = liker_age_group),
+  geom_point(data = mean_data, aes(x = mean_partner_age, y = subject_age_group),
              shape = 21, size = 3, fill = "black", color = "white") +
-  facet_wrap(~ liker_gender) +
-  labs(
-    title = "Distribution of Liked Age by Liker Age Groups",
+  facet_wrap(~ subject_gender) +
+  labs( title = "Age Preferences in Dating: Differences across Age groups and Gender",
     x = "Liked Age",
-    y = "Liker Age Group",
-    Fill = "Gender"
-  ) +
+    y = "Subjects",
+    Fill = "Gender") +
   theme_minimal()
-
 ```
 
-```{r scatterplot}
-ggplot(liked_data, aes(x = liker_age, y = liked_age, color = liker_gender)) +
-  geom_jitter(alpha = 0.3) +  # Scatterplot with slight jitter for visibility
-  geom_smooth(method = "lm", se = FALSE) +  # Trend line
-  labs(title = "Scatterplot of Age Preferences",
-       x = "Liker Age",
-       y = "Liked Age",
-       color = "Gender") +
-  theme_minimal()
-
-```
-
-install.packages("ggrain")
-
-library(ggrain)
-
-ggplot(iris, aes(x = liker_gender, y = liked_age, fill = liker_age)) + geom_rain(rain.side = 'l')
-# queste cose ti serviranno domani -> 
-
-install.packages("ggdist")  # Needed for geom_rain
-install.packages("ggplot2")
-install.packages("tidyverse")  # Includes dplyr for %>%
-
-
-library(ggdist)  # For raincloud plots
-library(tidyverse)  # dplyr for data wrangling
-
-```{r good plot}
+```{r Bad plot}
 
 library(ggplot2)
 library(ggdist)  # For raincloud plots
 library(tidyverse)  # dplyr for data wrangling
 
 plot <- liked_data %>%
-  ggplot(aes(x = liked_age, y = liker_gender, fill = liker_age)) +  
+  ggplot(aes(x = liked_age, y = subject_gender, fill = subject_age)) +  
   stat_halfeye(adjust = 0.5, width = 0.5, justification = 0.1, .width = 0, point_colour = "black") +  # "Cloud" part
   geom_dots(side = "left", binwidth = 0.1, color = "blue") +  # "Rain" part
   coord_flip() +  # Flip for better visualization
   theme_minimal() +  # Cleaner style
   labs(title = "Raincloud Plot: Attraction by Age & Gender",
        x = "Liked Age",
-       y = "Liker Gender") 
-
-print(plot)
+       y = "subject Gender") 
 
 library(dplyr)
 
-liked_data$liker_age_group <- cut(liked_data$liker_age, breaks = c(18, 25, 30, 35, 40), labels = c("18-25", "26-30", "31-35", "36-40"))
+liked_data$subject_age_group <- cut(liked_data$subject_age, breaks = c(18, 25, 30, 35, 40), labels = c("18-25", "26-30", "31-35", "36-40"))
 
 # Calculate means for each group
 means <- liked_data %>%
-  group_by(liker_gender) %>%
-  summarize(mean_age = mean(liked_age))
+  group_by(subject_gender) %>%
+  summarize(mean_age = mean(partner_age))
 
 
-ggplot(liked_data, aes(x = liked_age, y = liker_gender, fill = liker_age_group)) +
+ggplot(liked_data, aes(x = partner_age, y = subject_gender, fill = subject_age_group)) +
   stat_halfeye(adjust = 0.5, width = 0.6, justification = -0.3, 
                .width = 0, point_colour = "black", alpha = 0.5) +  
   geom_dots(side = "left", binwidth =0.5, color = "black", dotsize = 0.5) +
@@ -299,48 +214,13 @@ ggplot(liked_data, aes(x = liked_age, y = liker_gender, fill = liker_age_group))
   scale_y_discrete(expand = expansion(mult = 0.1)) +
   labs(title = "Gender Differences on Attractive Age",
        x = "Liked Age",
-       y = "Liker Gender")
+       y = "subject Gender")
 
 ```
-# # Creating the bad plot 
-library(ggplot2)
-library(dplyr)
-library(gridExtra)  # Required for arranging plots side by side
-
-# Plot for females (likers who are female)
-female_plot <- liked_data %>%
-  filter(liker_gender == "Female") %>%
-  ggplot(aes(x = liker_age, y = liked_age, color = liked_gender)) +  # Relating liker's age and liked's age
-  geom_point(alpha = 0.7) +  # Scatter plot
-  geom_smooth(method = "lm", se = FALSE, color = "black") +  # Add a regression line
-  labs(title = "Attraction to Males by Female Likers", 
-       x = "Age of Female Likers", 
-       y = "Age of Attracted Males") +
-  theme_minimal() +  # Minimal theme for a clean look
-  theme(legend.position = "none")
-
-# Plot for males (likers who are male)
-male_plot <- liked_data %>%
-  filter(liker_gender == "Male") %>%
-  ggplot(aes(x = liker_age, y = liked_age, color = liked_gender)) +  # Relating liker's age and liked's age
-  geom_point(alpha = 0.7) +  # Scatter plot
-  geom_smooth(method = "lm", se = FALSE, color = "black") +  # Add a regression line
-  labs(title = "Attraction to Females by Male Likers", 
-       x = "Age of Male Likers", 
-       y = "Age of Attracted Females") +
-  theme_minimal() +  # Minimal theme for a clean look
-  theme(legend.position = "none")
-
-# Arrange the plots side by side
-grid.arrange(female_plot, male_plot, ncol = 2)
-
-
-
-library(ggplot2)
-
+```{r Bad plot 2.0}
 
 # Example of creating raincloud plot
-ggplot(liked_data, aes(x = liker_age, y = liked_age, fill = liker_gender )) +
+ggplot(liked_data, aes(x = subject_age, y = partner_age, fill = subject_gender )) +
   # Violin plot for distribution
   geom_violin(scale = "area", alpha = 0.5, trim = TRUE) +
   # Boxplot for central tendency
@@ -350,8 +230,8 @@ ggplot(liked_data, aes(x = liker_age, y = liked_age, fill = liker_gender )) +
   # Customization
   theme_minimal() +
   labs(
-    title = "Age Distribution of Liker and Liked",
-    x = "Liker ID",
+    title = "Age Distribution of subject and partner",
+    x = "subject ID",
     y = "Age"
   ) +
   theme(
