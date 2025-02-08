@@ -233,5 +233,4 @@ ggplot(liked_data, aes(x = subject_age, y = partner_age, fill = subject_gender )
 ```
 
 # Description
-Subject ID is wrong, because their age is actually being displayed. Putting a dotplot on the violin plot makes the interpretation harder, also because of the dotsize and the quantity of information. 
-By using a violing plot and a box plot there is overlapping on the data.
+The x-axis label is misleading: it is labeled "subject ID," but it does not represent individual IDs, instead their age. The points are overlapping heavily, obscuring the individual data points. The violin plot misleads if there's a sample sizes difference. The combination of violin plot, boxplot, and dot plot creates visual redundancy, making the graph busy and harder to interpret. The title, "Age Distribution of subject and partner," is vague. It’s unclear if the graph compares subject and partner ages or shows general age distribution by gender.
